@@ -11,8 +11,12 @@
 .def row = r23 ; current row number
 .def col = r24 ; current column number
 .def rmask = r25 ; mask for current row during scan
-.def cmask = r26 ; mask for current column during scan
+.def cmask = r19 ; mask for current column during scan
 
+.equ PORTLDIR = 0xF0        ; PH7-4: output, PH3-0, input
+.equ INITCOLMASK = 0xEF     ; scan from the rightmost column,
+.equ INITROWMASK = 0x01     ; scan from the top row
+.equ ROWMASK = 0x0F         ; for obtaining input from Port L
 
 .macro do_lcd_command
 	ldi r16, @0
@@ -23,6 +27,18 @@
 	ldi r16, @0
 	rcall lcd_data
 	rcall lcd_wait
+.endmacro
+.macro do_lcd_rdata
+	mov lcd, @0
+	subi lcd, -'0'
+	rcall lcd_data
+	rcall lcd_wait
+.endmacro
+.macro do_lcd_digits
+	clr digit
+	clr digitCount
+	mov temp, @0			; temp is given number
+	rcall convert_digits	; call a function
 .endmacro
 .macro clear
     ldi YL, low(@0)     ; load the memory address to Y
@@ -138,12 +154,12 @@ Timer0OVF: ; interrupt subroutine to Timer0
 
 	newSecond:
 	    lds r24, Timer1Counter
-    	lds r25, Timer1Counter+1
-    	adiw r25:r24, 1 ; Increase the temporary counter by one.
+    	    lds r25, Timer1Counter+1
+    	    adiw r25:r24, 1 ; Increase the temporary counter by one.
 
-    	cpi r24, low(23436)      ; 23436 is what we need Check if (r25:r24) = 7812 ; 7812 = 10^6/128
-    	ldi temp, high(23436)    ; 3 second
-    	cpc r25, temp
+    	    cpi r24, low(23436)      ; 23436 is what we need Check if (r25:r24) = 7812 ; 7812 = 10^6/128
+    	    ldi temp, high(23436)    ; 3 second
+    	    cpc r25, temp
     	brne NotSecond
 		
 		secondPassed: ; 3 second passed
