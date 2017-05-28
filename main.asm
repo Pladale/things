@@ -1,4 +1,5 @@
-
+; This program implements a timer that counts one second using 
+; Timer0 interrupt
 .include "m2560def.inc"
 
 .def temp = r16
@@ -8,23 +9,34 @@
 .def lcd = r20				; lcd handle
 .def digit = r21			; used to display decimal numbers digit by digit
 .def digitCount = r22		; how many digits do we have to display?
-.def row = r23 ; current row number
-.def col = r24 ; current column number
-.def rmask = r25 ; mask for current row during scan
-.def cmask = r19 ; mask for current column during scan
 
-.equ PORTLDIR = 0xF0        ; PH7-4: output, PH3-0, input
-.equ INITCOLMASK = 0xEF     ; scan from the rightmost column,
-.equ INITROWMASK = 0x01     ; scan from the top row
-.equ ROWMASK = 0x0F         ; for obtaining input from Port L
+; The macro clears a word (2 bytes) in a memory
+; the parameter @0 is the memory address for that word
+.macro clear
+    ldi YL, low(@0)     ; load the memory address to Y
+    ldi YH, high(@0)
+    clr temp 
+    st Y+, temp         ; clear the two bytes at @0 in SRAM
+    st Y, temp
+.endmacro
+                        
+.dseg
+Timer1Counter:
+   .byte 2              ; Temporary counter. Used to determine 
+                        ; if one second has passed
+;Timer3Counter:
+;	.byte 2
+VoltageFlag:
+	.byte 1
 
+; LCD macros
 .macro do_lcd_command
-	ldi r16, @0
+	ldi lcd, @0
 	rcall lcd_command
 	rcall lcd_wait
 .endmacro
 .macro do_lcd_data
-	ldi r16, @0
+	ldi lcd, @0
 	rcall lcd_data
 	rcall lcd_wait
 .endmacro
@@ -40,47 +52,46 @@
 	mov temp, @0			; temp is given number
 	rcall convert_digits	; call a function
 .endmacro
-.macro clear
-    ldi YL, low(@0)     ; load the memory address to Y
-    ldi YH, high(@0)
-    clr temp 
-    st Y+, temp         ; clear the two bytes at @0 in SRAM
-    st Y, temp
-.endmacro
- 
-                        
-.dseg
-Timer1Counter:
-   .byte 2              ; Temporary counter. Used to determine 
-                        ; if one second has passed
+
+
+
 .cseg
-.org 0
-	jmp RESET
-	jmp DEFAULT
-	jmp DEFAULT
+.org 0x0000
+   jmp RESET
+   jmp DEFAULT          ; No handling for IRQ0.
+   jmp DEFAULT          ; No handling for IRQ1.
+.org INT2addr
+    jmp EXT_INT2
 .org OVF0addr
-	jmp Timer0OVF
-	jmp DEFAULT
+   jmp Timer0OVF        ; Jump to the interrupt handler for
+;.org OVF3addr
+;   jmp Timer3OVF        ; Jump to the interrupt handler for
+jmp DEFAULT          ; default service for all other interrupts.
+DEFAULT:  reti          ; no service
 
-DEFAULT: reti
+RESET: 
+    ldi temp, high(RAMEND) ; Initialize stack pointer
+    out SPH, temp
+    ldi temp, low(RAMEND)
+    out SPL, temp
+    ser temp
+    out DDRC, temp ; set Port C as output
 
-RESET:
-	ldi r16, low(RAMEND)
-	out SPL, r16
-	ldi r16, high(RAMEND)
-	out SPH, r16
-	
 	sei
 
-	ser r16
-	out DDRF, r16
-	out DDRA, r16
-	clr r16
-	out PORTF, r16
-	out PORTA, r16
+	; LCD setup
+	ser temp
+	out DDRF, temp
+	out DDRA, temp
+	clr temp
+	out PORTF, temp
+	out PORTA, temp
 
+	; LCD: init the settings
 	do_lcd_command 0b00111000 ; 2x5x7
+	rcall sleep_5ms
 	do_lcd_command 0b00111000 ; 2x5x7
+	rcall sleep_1ms
 	do_lcd_command 0b00111000 ; 2x5x7
 	do_lcd_command 0b00111000 ; 2x5x7
 	do_lcd_command 0b00001000 ; display off?
@@ -88,40 +99,15 @@ RESET:
 	do_lcd_command 0b00000110 ; increment, no display shift
 	do_lcd_command 0b00001110 ; Cursor on, bar, no blink
 
-	do_lcd_data '2'
-	do_lcd_data '1'
-	do_lcd_data '2'
-	do_lcd_data '1'
-	do_lcd_data ' '
-	do_lcd_data '1'
-	do_lcd_data '7'
-	do_lcd_data 's'
-	do_lcd_data '1'
-	do_lcd_data ' '
-	do_lcd_data ' '
-	do_lcd_data ' '
-	do_lcd_data ' '
-	do_lcd_data 'E'
-	do_lcd_data '8'
-	do_lcd_command 0b11000000
-	do_lcd_data 'V'
-	do_lcd_data 'e'
-	do_lcd_data 'n'
-	do_lcd_data 'd'
-	do_lcd_data 'i'
-	do_lcd_data 'n'
-	do_lcd_data 'g'
-	do_lcd_data ' '
-	do_lcd_data 'M'
-	do_lcd_data 'a'
-	do_lcd_data 'c'
-	do_lcd_data 'h'
-	do_lcd_data 'i'
-	do_lcd_data 'n'
-	do_lcd_data 'e'
+	do_lcd_data 'S';
+	do_lcd_data 'p';
+	do_lcd_data 'e';
+	do_lcd_data 'e';
+	do_lcd_data 'd';
+	do_lcd_data ':';
+	do_lcd_data ' ';
 
-halt:
-	rjmp halt
+	rjmp main
 
 .equ LCD_RS = 7
 .equ LCD_E = 6
@@ -130,17 +116,31 @@ halt:
 
 .macro lcd_set
 	sbi PORTA, @0
-	nop
-	nop
-	nop
 .endmacro
 .macro lcd_clr
 	cbi PORTA, @0
-	nop
-	nop
-	nop
 .endmacro
 
+
+
+EXT_INT2:
+	in temp, SREG
+	push temp
+	push temp2
+
+
+	inc counter
+	
+	;do_lcd_command 0b00000001 ; clear display
+	;do_lcd_command 0b00000110 ; increment, no display shift
+	;do_lcd_command 0b00001110 ; Cursor on, bar, no blink
+
+
+	END_INT2:
+		pop temp2
+		pop temp
+		out SREG, temp
+		reti
 
 Timer0OVF: ; interrupt subroutine to Timer0
     in temp, SREG
@@ -149,36 +149,34 @@ Timer0OVF: ; interrupt subroutine to Timer0
     push YL
     push r25
     push r24
+;	push counter
 	        ; Prologue ends.
                     ; Load the value of the temporary counter.
 
 	newSecond:
 	    lds r24, Timer1Counter
-    	    lds r25, Timer1Counter+1
-    	    adiw r25:r24, 1 ; Increase the temporary counter by one.
+    	lds r25, Timer1Counter+1
+    	adiw r25:r24, 1 ; Increase the temporary counter by one.
 
-    	    cpi r24, low(23436)      ; 23436 is what we need Check if (r25:r24) = 7812 ; 7812 = 10^6/128
-    	    ldi temp, high(23436)    ; 3 second
-    	    cpc r25, temp
+    	cpi r24, low(7812*3)      ; 1953 is what we need Check if (r25:r24) = 7812 ; 7812 = 10^6/128
+    	ldi temp, high(7812*3)    ; 7812 = 10^6/128
+    	cpc r25, temp
     	brne NotSecond
 		
-		secondPassed: ; 3 second passed
+		secondPassed: ; 1/4 of a second passed
 			do_lcd_command 0b00000001 ; clear display
 			do_lcd_command 0b00000110 ; increment, no display shift
 			do_lcd_command 0b00001110 ; Cursor on, bar, no blink
 
-			do_lcd_data 'S'
-			do_lcd_data 'e'
-			do_lcd_data 'l'
-			do_lcd_data 'e'
-			do_lcd_data 'c'
-			do_lcd_data 't'
-			do_lcd_data ' '
-			do_lcd_data 'i'
-			do_lcd_data 't'
-			do_lcd_data 'e'
-			do_lcd_data 'm'
-			do_lcd_command 0b11000000
+			do_lcd_data '1';
+			do_lcd_data '2';
+			do_lcd_data '3';
+			do_lcd_data '4';
+			do_lcd_data '5';
+			do_lcd_data ':';
+			do_lcd_data ' ';
+
+			out PORTC, counter
 
 			do_lcd_digits counter
 			clr counter
@@ -201,16 +199,20 @@ EndIF:
     out SREG, temp
     reti            ; Return from the interrupt.
 
+
 main:
     clear Timer1Counter       ; Initialize the temporary counter to 0
-	
-	ldi temp, (2 << ISC20)      ; set INT2 as falling-
+	;clear Timer3Counter
+	ldi r26, 0
+	sts VoltageFlag, r26	
+
+	ldi temp, (2 << ISC20)      ; set INT0 as falling-
     sts EICRA, temp             ; edge triggered interrupt
     in temp, EIMSK              ; enable INT2
     ori temp, (1<<INT2)
     out EIMSK, temp
 
-	; Timer0 initilaisation
+	
 
     ldi temp, 0b00000000
     out TCCR0A, temp
@@ -219,6 +221,9 @@ main:
     ldi temp, 1<<TOIE0      ; = 128 microseconds
     sts TIMSK0, temp        ; T/C0 interrupt enable
 
+	
+
+
     sei                     ; Enable global interrupt
                             ; loop forever
     loop: rjmp loop
@@ -226,7 +231,7 @@ main:
 ; function: displaying given number by digit in ASCII using stack
 convert_digits:
 	push digit
-	
+
 	checkHundreds:
 		cpi temp, 100			; is the number still > 100?
 		brsh hundredsDigit		; if YES - increase hundreds digit
@@ -263,7 +268,7 @@ convert_digits:
 	breq dispOneDigit
 
 	endDisplayDigits:
-	
+
 	pop digit
 	ret
 
@@ -311,39 +316,69 @@ dispOneDigit:
 	rjmp endDisplayDigits
 
 ;
-; Send a command to the LCD (r16)
+; Send a command to the LCD (lcd register)
 ;
 
 lcd_command:
-	out PORTF, r16
+	out PORTF, lcd
+	rcall sleep_1ms
 	lcd_set LCD_E
+	rcall sleep_1ms
 	lcd_clr LCD_E
+	rcall sleep_1ms
 	ret
 
 lcd_data:
-	out PORTF, r16
+	out PORTF, lcd
 	lcd_set LCD_RS
+	rcall sleep_1ms
 	lcd_set LCD_E
+	rcall sleep_1ms
 	lcd_clr LCD_E
+	rcall sleep_1ms
 	lcd_clr LCD_RS
 	ret
 
 lcd_wait:
-	push r16
-	clr r16
-	out DDRF, r16
-	out PORTF, r16
+	push lcd
+	clr lcd
+	out DDRF, lcd
+	out PORTF, lcd
 	lcd_set LCD_RW
 lcd_wait_loop:
-	
+	rcall sleep_1ms
 	lcd_set LCD_E
-	
-	in r16, PINF
+	rcall sleep_1ms
+	in lcd, PINF
 	lcd_clr LCD_E
-	sbrc r16, 7
+	sbrc lcd, 7
 	rjmp lcd_wait_loop
 	lcd_clr LCD_RW
-	ser r16
-	out DDRF, r16
-	pop r16
+	ser lcd
+	out DDRF, lcd
+	pop lcd
+	ret
+
+.equ F_CPU = 16000000
+.equ DELAY_1MS = F_CPU / 4 / 1000 - 4
+; 4 cycles per iteration - setup/call-return overhead
+
+sleep_1ms:
+	push r24
+	push r25
+	ldi r25, high(DELAY_1MS)
+	ldi r24, low(DELAY_1MS)
+delayloop_1ms:
+	sbiw r25:r24, 1
+	brne delayloop_1ms
+	pop r25
+	pop r24
+	ret
+
+sleep_5ms:
+	rcall sleep_1ms
+	rcall sleep_1ms
+	rcall sleep_1ms
+	rcall sleep_1ms
+	rcall sleep_1ms
 	ret
