@@ -3,7 +3,7 @@
 .include "m2560def.inc"
 
 .equ PATTERN = 0b1111000011001100; pattern defined
-.def temp = r16
+.def temp = r16d
 .def patternH = r18
 .def patternL = r17
 
