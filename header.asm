@@ -24,8 +24,23 @@ VoltageFlag:
 	.byte 1
 OneInventory:
 	.byte 1
-;bflag:
-;	.byte 1
+TwoInventory:
+	.byte 1
+ThreeInventory:
+	.byte 1
+FourInventory:
+	.byte 1
+FiveInventory:
+	.byte 1
+SixInventory:
+	.byte 1
+SevenInventory:
+	.byte 1
+EightInventory:
+	.byte 1
+NineInventory:
+	.byte 1
+
 .cseg
 .org 0x0000
    jmp RESET
