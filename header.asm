@@ -8,7 +8,6 @@
 .def lcd = r22
 .def flags = r23
 .def digits = r24
-.def lala =r26
 
 .equ PORTLDIR = 0xF0 ; PD7-4: output, PD3-0, input
 .equ INITCOLMASK = 0xEF ; scan from the rightmost column,
@@ -23,7 +22,7 @@ DebounceCounter:
     .byte 2
 VoltageFlag:
 	.byte 1
-ScreenFlag:
+OneInventory:
 	.byte 1
 ;bflag:
 ;	.byte 1
@@ -40,5 +39,3 @@ ScreenFlag:
 ;   jmp Timer3OVF        ; Jump to the interrupt handler for
 jmp DEFAULT          ; default service for all other interrupts.
 DEFAULT:  reti          ; no service
-
-
