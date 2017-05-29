@@ -18,12 +18,24 @@ RESET:
     out SPH, temp1
     ldi temp1, low(RAMEND)
     out SPL, temp1
-
+	
+	;initialize the Inventory
+	ldi OneInventory, 1
+	ldi TwoInventory, 2
+	ldi ThreeInventory, 3
+	ldi FourInventory, 4	
+	ldi FiveInventory, 5
+	ldi SixInventory, 6	
+	ldi SevenInventory, 7	
+	ldi EightInventory, 8	
+ 	ldi NineInventory, 9
+	
 	ldi temp1,(3 << REFS0) | (0 << ADLAR) | (0 << MUX0);
 	sts ADMUX, temp1
 	ldi temp1,(1 << MUX5);
 	sts ADCSRB, temp1
-	ldi temp1, (1 << ADEN) | (1 << ADSC) | (1 << ADIE) | (5 << ADPS0);	sts ADCSRA, temp1
+	ldi temp1, (1 << ADEN) | (1 << ADSC) | (1 << ADIE) | (5 << ADPS0);
+	sts ADCSRA, temp1
 
 	sei
 
@@ -244,6 +256,55 @@ showCoinScreen:
 	rcall coinScreen
 	ori flags,0b00000010
 	jmp keypad
+	
+AfterDelivery:
+	;use a variable to store number that we bought
+	cpi variable, 1
+	breq One
+	cpi variable, 2
+	breq Two
+	cpi variable, 3
+	breq Three
+	cpi variable, 4
+	breq Four
+	cpi variable, 5
+	breq Five
+	cpi variable, 6
+	breq Six
+	cpi variable, 7
+	breq Seven
+	cpi variable, 8
+	breq Eight
+	cpi variable, 9
+	breq Nine
+One:
+	dec OneInventory
+	jmp main
+Two:
+	dec TwoInventory
+	jmp main
+Three:
+	dec ThreeInventory
+	jmp main
+Four:
+	dec FourInventory
+	jmp main
+Five:
+	dec FiveInventory
+	jmp main
+Six:
+	dec SixInventory
+	jmp main
+Seven:
+	dec SevenInventory
+	jmp main
+Eight:
+	dec EightInventory
+	jmp main
+Nine:
+	dec NineInventory
+	jmp main
+	
 ;
 ; Send a command to the LCD (lcd register)
 ;
