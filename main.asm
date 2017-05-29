@@ -19,6 +19,12 @@ RESET:
     ldi temp1, low(RAMEND)
     out SPL, temp1
 
+	ldi temp1,(3 << REFS0) | (0 << ADLAR) | (0 << MUX0);
+	sts ADMUX, temp1
+	ldi temp1,(1 << MUX5);
+	sts ADCSRB, temp1
+	ldi temp1, (1 << ADEN) | (1 << ADSC) | (1 << ADIE) | (5 << ADPS0);	sts ADCSRA, temp1
+
 	sei
 
 	ldi temp1, PORTLDIR ; PL7:4/PL3:0, out/in
@@ -46,6 +52,10 @@ RESET:
 	rcall setUpLcd
 	rcall firstScreen
 
+	potentio:
+	lds temp1, ADCL
+	lds temp2, ADCH
+	out PORTC, temp1
 	rjmp main
 
 
@@ -65,6 +75,9 @@ END_INT2:
 	pop temp1
 	out SREG, temp1
 	reti
+
+
+	;ADCH:ADCL
 
 Timer0OVF: ; interrupt subroutine to Timer0
     in temp1, SREG
@@ -169,7 +182,7 @@ nextcol:
 	inc col ; increase column value
 	jmp colloop ; go to the next column
 convert:
-
+	cpi digits,1
 	breq keypad
 	cpi col, 3 ; If the pressed key is in col.3
 	;breq letters ; we have a letter
@@ -180,32 +193,56 @@ convert:
 	lsl temp1
 	add temp1, row
 	add temp1, col ; temp1 = row*3 + col
-	inc temp1
+	subi temp1, -1
 	jmp convert_end
 
 convert_end:
 	;out PORTC, temp1 ; Write value to PORTC
-	out PORTC, flags
-	do_lcd_rdata temp1
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	rcall sleep_50ms
-	mov temp1, flags
-	andi temp1, 0b00000001
-	cpi temp1, 0b00000001
+	;out PORTC, flags
+	andi temp1,0b00000001
+	cpi temp1,0b00000001
+	brne print_evenNumber
+	out PORTC, temp1
+	;do_lcd_rdata temp1
+convert_end_end:
+	mov temp2, flags
+	andi temp2, 0b00000100
+	cpi temp2, 0b00000100
 	brne showSecondScreen
+	
+
+	mov temp2, flags
+	andi temp2, 0b00000010
+	cpi temp2, 0b00000010
+	brne showCoinScreen
+	
+	ldi digits, 1
+	rcall sleep_50ms
+	rcall sleep_50ms
+	rcall sleep_50ms
+	rcall sleep_50ms
+	rcall sleep_50ms
+	ldi digits, 0
+	
 	jmp keypad
 
     loop: rjmp loop
-
+print_evenNumber:
+	ldi temp1,2 
+	out PORTC, temp1
+	rjmp convert_end_end
 showSecondScreen:
 	rcall SecondScreen
-	ori flags,0b00000001   ; flag for keypad
+	ori flags,0b00000100   ; flag for keypad
+	rcall sleep_50ms
+	rcall sleep_50ms
+	rcall sleep_50ms
+	rcall sleep_50ms
+	jmp keypad
+
+showCoinScreen:
+	rcall coinScreen
+	ori flags,0b00000010
 	jmp keypad
 ;
 ; Send a command to the LCD (lcd register)
