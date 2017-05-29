@@ -20,15 +20,24 @@ RESET:
     out SPL, temp1
 	
 	;initialize the Inventory
-	ldi OneInventory, 1
-	ldi TwoInventory, 2
-	ldi ThreeInventory, 3
-	ldi FourInventory, 4	
-	ldi FiveInventory, 5
-	ldi SixInventory, 6	
-	ldi SevenInventory, 7	
-	ldi EightInventory, 8	
- 	ldi NineInventory, 9
+	ldi temp1, 1
+	sts OneInventory, temp1
+	ldi temp1, 2
+	sts TwoInventory, temp1
+	ldi temp1, 3
+	sts ThreeInventory, temp1
+	ldi temp1, 4
+	sts FourInventory, temp1
+	ldi temp1, 5	
+	sts FiveInventory, temp1
+	ldi temp1, 6
+	sts SixInventory, temp1
+	ldi temp1, 7
+	sts SevenInventory, temp1
+	ldi temp1, 8
+	sts EightInventory, temp1
+	ldi temp1, 9
+ 	sts NineInventory, temp1
 	
 	ldi temp1,(3 << REFS0) | (0 << ADLAR) | (0 << MUX0);
 	sts ADMUX, temp1
@@ -258,51 +267,68 @@ showCoinScreen:
 	jmp keypad
 	
 AfterDelivery:
-	;use a variable to store number that we bought
-	cpi variable, 1
+	cpi temp1, 1
 	breq One
-	cpi variable, 2
+	cpi temp1, 2
 	breq Two
-	cpi variable, 3
+	cpi temp1, 3
 	breq Three
-	cpi variable, 4
+	cpi temp1, 4
 	breq Four
-	cpi variable, 5
+	cpi temp1, 5
 	breq Five
-	cpi variable, 6
+	cpi temp1, 6
 	breq Six
-	cpi variable, 7
+	cpi temp1, 7
 	breq Seven
-	cpi variable, 8
+	cpi temp1, 8
 	breq Eight
-	cpi variable, 9
+	cpi temp1, 9
 	breq Nine
 One:
-	dec OneInventory
+	lds temp1, OneInventory
+	dec temp1
+	sts OneInventory, temp1
 	jmp main
 Two:
-	dec TwoInventory
+	lds temp1, TwoInventory
+	dec temp1
+	sts TwoInventory, temp1
 	jmp main
 Three:
-	dec ThreeInventory
+	lds temp1, ThreeInventory
+	dec temp1
+	sts ThreeInventory, temp1
 	jmp main
 Four:
-	dec FourInventory
+	lds temp1, FourInventory
+	dec temp1
+	sts FourInventory, temp1
 	jmp main
 Five:
-	dec FiveInventory
+	lds temp1, FourInventory
+	dec temp1
+	sts FourInventory, temp1
 	jmp main
 Six:
-	dec SixInventory
+	lds temp1, SixInventory
+	dec temp1
+	sts SixInventory, temp1
 	jmp main
 Seven:
-	dec SevenInventory
+	lds temp1, SevenInventory
+	dec temp1
+	sts SevenInventory, temp1
 	jmp main
 Eight:
-	dec EightInventory
+	lds temp1, EightInventory
+	dec temp1
+	sts EightInventory, temp1
 	jmp main
 Nine:
-	dec NineInventory
+	lds temp1, NineInventory
+	dec temp1
+	sts NineInventory, temp1
 	jmp main
 	
 ;
