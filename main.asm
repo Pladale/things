@@ -169,7 +169,7 @@ nextcol:
 	inc col ; increase column value
 	jmp colloop ; go to the next column
 convert:
-	cpi digits,1
+
 	breq keypad
 	cpi col, 3 ; If the pressed key is in col.3
 	;breq letters ; we have a letter
@@ -187,7 +187,6 @@ convert_end:
 	;out PORTC, temp1 ; Write value to PORTC
 	out PORTC, flags
 	do_lcd_rdata temp1
-	ldi digits, 1
 	rcall sleep_50ms
 	rcall sleep_50ms
 	rcall sleep_50ms
@@ -196,7 +195,6 @@ convert_end:
 	rcall sleep_50ms
 	rcall sleep_50ms
 	rcall sleep_50ms
-	ldi digits, 0
 	mov temp1, flags
 	andi temp1, 0b00000001
 	cpi temp1, 0b00000001
